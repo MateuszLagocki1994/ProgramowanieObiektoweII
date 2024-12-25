@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+import csv
 
 class VacationBookingApp:
     def __init__(self, root):
@@ -56,6 +57,9 @@ class VacationBookingApp:
         tk.Button(root, text="Usuń wszystkie rezerwacje", command=self.clear_bookings).pack(pady=10)
         tk.Button(root, text="Eksportuj rezerwacje do pliku", command=self.export_bookings).pack(pady=10)
         tk.Button(root, text="Filtruj rezerwacje", command=self.filter_bookings).pack(pady=10)
+        tk.Button(root, text="Edytuj rezerwację", command=self.edit_booking).pack(pady=10)
+        tk.Button(root, text="Szukaj rezerwacji po nazwisku", command=self.search_booking).pack(pady=10)
+        tk.Button(root, text="Statystyki destynacji", command=self.show_statistics).pack(pady=10)
 
         # Lista rezerwacji
         self.bookings = []
@@ -134,18 +138,12 @@ class VacationBookingApp:
             messagebox.showinfo("Brak rezerwacji", "Nie ma żadnych rezerwacji do eksportu.")
             return
 
-        with open("rezerwacje.txt", "w", encoding="utf-8") as file:
-            for booking in self.bookings:
-                file.write(
-                    f"Imię i nazwisko: {booking['name']}\n"
-                    f"E-mail: {booking['email']}\n"
-                    f"Numer telefonu: {booking['phone']}\n"
-                    f"Destynacja: {booking['destination']}\n"
-                    f"Daty podróży: {booking['start_date']} do {booking['end_date']}\n"
-                    f"Uwagi specjalne: {booking['special_requests']}\n"
-                    f"-----------------------------\n"
-                )
-        messagebox.showinfo("Sukces", "Rezerwacje zostały wyeksportowane do pliku 'rezerwacje.txt'.")
+        with open("rezerwacje.csv", "w", newline='', encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=["name", "email", "phone", "destination", "start_date", "end_date", "special_requests"])
+            writer.writeheader()
+            writer.writerows(self.bookings)
+
+        messagebox.showinfo("Sukces", "Rezerwacje zostały wyeksportowane do pliku 'rezerwacje.csv'.")
 
     def filter_bookings(self):
         filter_window = tk.Toplevel(self.root)
@@ -191,6 +189,92 @@ class VacationBookingApp:
             messagebox.showinfo("Wyniki filtrowania", filtered_details)
 
         tk.Button(filter_window, text="Zastosuj filtr", command=apply_filter).pack(pady=10)
+
+    def edit_booking(self):
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Edytuj rezerwację")
+
+        tk.Label(edit_window, text="Wprowadź nazwisko do edycji:").pack(pady=10)
+        search_name_entry = tk.Entry(edit_window, width=40)
+        search_name_entry.pack(padx=20, pady=5)
+
+        def search_for_edit():
+            search_name = search_name_entry.get().strip()
+            matching_bookings = [b for b in self.bookings if b["name"] == search_name]
+
+            if not matching_bookings:
+                messagebox.showinfo("Brak wyników", "Nie znaleziono rezerwacji o podanym nazwisku.")
+                return
+
+            b = matching_bookings[0]  # Assuming first match for simplicity
+            self.name_entry.delete(0, tk.END)
+            self.name_entry.insert(0, b['name'])
+
+            self.email_entry.delete(0, tk.END)
+            self.email_entry.insert(0, b['email'])
+
+            self.phone_entry.delete(0, tk.END)
+            self.phone_entry.insert(0, b['phone'])
+
+            self.start_date_entry.delete(0, tk.END)
+            self.start_date_entry.insert(0, b['start_date'])
+
+            self.end_date_entry.delete(0, tk.END)
+            self.end_date_entry.insert(0, b['end_date'])
+
+            self.special_requests_text.delete("1.0", tk.END)
+            self.special_requests_text.insert("1.0", b['special_requests'])
+
+            self.bookings.remove(b)
+            messagebox.showinfo("Informacja", "Możesz edytować szczegóły i ponownie zapisać rezerwację.")
+
+        tk.Button(edit_window, text="Wyszukaj", command=search_for_edit).pack(pady=10)
+
+    def search_booking(self):
+        search_window = tk.Toplevel(self.root)
+        search_window.title("Szukaj rezerwacji")
+
+        tk.Label(search_window, text="Wprowadź nazwisko do wyszukiwania:").pack(pady=10)
+        search_name_entry = tk.Entry(search_window, width=40)
+        search_name_entry.pack(padx=20, pady=5)
+
+        def perform_search():
+            search_name = search_name_entry.get().strip()
+            matching_bookings = [
+                b for b in self.bookings if search_name.lower() in b["name"].lower()
+            ]
+
+            if not matching_bookings:
+                messagebox.showinfo("Brak wyników", "Nie znaleziono rezerwacji o podanym nazwisku.")
+                return
+
+            search_results = "\n\n".join([
+                f"Imię i nazwisko: {b['name']}\n"
+                f"E-mail: {b['email']}\n"
+                f"Numer telefonu: {b['phone']}\n"
+                f"Destynacja: {b['destination']}\n"
+                f"Daty podróży: {b['start_date']} do {b['end_date']}\n"
+                f"Uwagi specjalne: {b['special_requests']}"
+                for b in matching_bookings
+            ])
+
+            messagebox.showinfo("Wyniki wyszukiwania", search_results)
+
+        tk.Button(search_window, text="Szukaj", command=perform_search).pack(pady=10)
+
+    def show_statistics(self):
+        if not self.bookings:
+            messagebox.showinfo("Brak danych", "Nie ma żadnych rezerwacji do analizy.")
+            return
+
+        destination_counts = {}
+        for b in self.bookings:
+            destination = b["destination"]
+            destination_counts[destination] = destination_counts.get(destination, 0) + 1
+
+        stats_message = "\n".join([f"{dest}: {count} rezerwacji" for dest, count in destination_counts.items()])
+
+        messagebox.showinfo("Statystyki destynacji", stats_message)
 
     def clear_fields(self):
         self.name_entry.delete(0, tk.END)
