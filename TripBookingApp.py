@@ -8,7 +8,7 @@ class TripBookingApp:
     def __init__(self, root):
         self.root = root
         self.root.title("System Rezerwacji Wycieczek")
-        self.root.geometry("900x700")
+        self.root.geometry("1000x800")
 
         # Dane wycieczek (przykładowe)
         self.trips = [
@@ -20,7 +20,9 @@ class TripBookingApp:
 
         # Plik z historią rezerwacji
         self.history_file = "bookings.json"
-        self.load_bookings()
+        self.trips_file = "trips.json"
+
+        self.load_data()
 
         # Interfejs użytkownika
         self.create_widgets()
@@ -44,8 +46,7 @@ class TripBookingApp:
         self.trip_tree.heading("availability", text="Dostępność (osoby)")
         self.trip_tree.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
-        for trip in self.trips:
-            self.trip_tree.insert("", tk.END, values=(trip["name"], trip["price"], trip["availability"]))
+        self.refresh_trip_list()
 
         # Pole wyboru liczby osób
         tk.Label(self.root, text="Liczba osób:").pack(pady=5)
@@ -65,8 +66,13 @@ class TripBookingApp:
         self.booking_listbox = tk.Listbox(self.root, height=10)
         self.booking_listbox.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
-        # Podsumowanie finansowe
-        tk.Button(self.root, text="Podsumowanie finansowe", command=self.show_financial_summary).pack(pady=5)
+        # Panel administratora
+        admin_frame = tk.Frame(self.root)
+        admin_frame.pack(pady=10)
+
+        tk.Button(admin_frame, text="Dodaj wycieczkę", command=self.add_trip_window).pack(side=tk.LEFT, padx=5)
+        tk.Button(admin_frame, text="Usuń rezerwację", command=self.delete_booking).pack(side=tk.LEFT, padx=5)
+        tk.Button(admin_frame, text="Podsumowanie finansowe", command=self.show_financial_summary).pack(side=tk.LEFT, padx=5)
 
     def search_trip(self):
         query = self.search_var.get().lower()
@@ -97,7 +103,7 @@ class TripBookingApp:
         booking_info = f"{trip['name']} - {num_people} osoby/osób - {trip['price'] * num_people} PLN"
         self.bookings.append(booking_info)
         self.booking_listbox.insert(tk.END, booking_info)
-        self.save_bookings()
+        self.save_data()
 
         messagebox.showinfo("Sukces", "Rezerwacja zakończona pomyślnie!")
 
@@ -120,14 +126,72 @@ class TripBookingApp:
 
         messagebox.showinfo("Podsumowanie finansowe", f"Łączna wartość rezerwacji: {total} PLN")
 
-    def save_bookings(self):
+    def add_trip_window(self):
+        new_window = tk.Toplevel(self.root)
+        new_window.title("Dodaj nową wycieczkę")
+
+        tk.Label(new_window, text="Nazwa wycieczki:").grid(row=0, column=0, padx=5, pady=5)
+        name_var = tk.StringVar()
+        tk.Entry(new_window, textvariable=name_var).grid(row=0, column=1, padx=5, pady=5)
+
+        tk.Label(new_window, text="Cena (PLN):").grid(row=1, column=0, padx=5, pady=5)
+        price_var = tk.IntVar()
+        tk.Entry(new_window, textvariable=price_var).grid(row=1, column=1, padx=5, pady=5)
+
+        tk.Label(new_window, text="Dostępność:").grid(row=2, column=0, padx=5, pady=5)
+        availability_var = tk.IntVar()
+        tk.Entry(new_window, textvariable=availability_var).grid(row=2, column=1, padx=5, pady=5)
+
+        tk.Label(new_window, text="Szczegóły:").grid(row=3, column=0, padx=5, pady=5)
+        details_var = tk.StringVar()
+        tk.Entry(new_window, textvariable=details_var).grid(row=3, column=1, padx=5, pady=5)
+
+        def add_trip():
+            new_trip = {
+                "name": name_var.get(),
+                "price": price_var.get(),
+                "availability": availability_var.get(),
+                "details": details_var.get()
+            }
+            self.trips.append(new_trip)
+            self.refresh_trip_list()
+            self.save_data()
+            new_window.destroy()
+
+        tk.Button(new_window, text="Dodaj", command=add_trip).grid(row=4, column=0, columnspan=2, pady=10)
+
+    def delete_booking(self):
+        selected_booking = self.booking_listbox.curselection()
+        if not selected_booking:
+            messagebox.showwarning("Brak wyboru", "Proszę wybrać rezerwację do usunięcia!")
+            return
+
+        self.bookings.pop(selected_booking[0])
+        self.booking_listbox.delete(selected_booking)
+        self.save_data()
+        messagebox.showinfo("Sukces", "Rezerwacja została usunięta.")
+
+    def refresh_trip_list(self):
+        for item in self.trip_tree.get_children():
+            self.trip_tree.delete(item)
+
+        for trip in self.trips:
+            self.trip_tree.insert("", tk.END, values=(trip["name"], trip["price"], trip["availability"]))
+
+    def save_data(self):
         with open(self.history_file, "w") as file:
             json.dump(self.bookings, file)
+        with open(self.trips_file, "w") as file:
+            json.dump(self.trips, file)
 
-    def load_bookings(self):
+    def load_data(self):
         if os.path.exists(self.history_file):
             with open(self.history_file, "r") as file:
                 self.bookings = json.load(file)
+
+        if os.path.exists(self.trips_file):
+            with open(self.trips_file, "r") as file:
+                self.trips = json.load(file)
 
 
 if __name__ == "__main__":
