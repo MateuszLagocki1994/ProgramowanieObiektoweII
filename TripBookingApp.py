@@ -53,6 +53,9 @@ class VacationBookingApp:
 
         tk.Button(root, text="Zarezerwuj wakacje", command=self.book_vacation).pack(pady=20)
         tk.Button(root, text="Pokaż wszystkie rezerwacje", command=self.show_bookings).pack(pady=10)
+        tk.Button(root, text="Usuń wszystkie rezerwacje", command=self.clear_bookings).pack(pady=10)
+        tk.Button(root, text="Eksportuj rezerwacje do pliku", command=self.export_bookings).pack(pady=10)
+        tk.Button(root, text="Filtruj rezerwacje", command=self.filter_bookings).pack(pady=10)
 
         # Lista rezerwacji
         self.bookings = []
@@ -117,6 +120,77 @@ class VacationBookingApp:
         ])
 
         messagebox.showinfo("Wszystkie rezerwacje", bookings_details)
+
+    def clear_bookings(self):
+        if not self.bookings:
+            messagebox.showinfo("Brak rezerwacji", "Nie ma żadnych rezerwacji do usunięcia.")
+            return
+
+        self.bookings.clear()
+        messagebox.showinfo("Sukces", "Wszystkie rezerwacje zostały usunięte.")
+
+    def export_bookings(self):
+        if not self.bookings:
+            messagebox.showinfo("Brak rezerwacji", "Nie ma żadnych rezerwacji do eksportu.")
+            return
+
+        with open("rezerwacje.txt", "w", encoding="utf-8") as file:
+            for booking in self.bookings:
+                file.write(
+                    f"Imię i nazwisko: {booking['name']}\n"
+                    f"E-mail: {booking['email']}\n"
+                    f"Numer telefonu: {booking['phone']}\n"
+                    f"Destynacja: {booking['destination']}\n"
+                    f"Daty podróży: {booking['start_date']} do {booking['end_date']}\n"
+                    f"Uwagi specjalne: {booking['special_requests']}\n"
+                    f"-----------------------------\n"
+                )
+        messagebox.showinfo("Sukces", "Rezerwacje zostały wyeksportowane do pliku 'rezerwacje.txt'.")
+
+    def filter_bookings(self):
+        filter_window = tk.Toplevel(self.root)
+        filter_window.title("Filtruj rezerwacje")
+
+        tk.Label(filter_window, text="Filtruj rezerwacje według daty:").pack(pady=10)
+
+        tk.Label(filter_window, text="Od daty (RRRR-MM-DD):").pack(anchor="w", padx=20)
+        start_date_filter = tk.Entry(filter_window, width=20)
+        start_date_filter.pack(padx=20, pady=5)
+
+        tk.Label(filter_window, text="Do daty (RRRR-MM-DD):").pack(anchor="w", padx=20)
+        end_date_filter = tk.Entry(filter_window, width=20)
+        end_date_filter.pack(padx=20, pady=5)
+
+        def apply_filter():
+            start_date = start_date_filter.get().strip()
+            end_date = end_date_filter.get().strip()
+
+            if not start_date or not end_date:
+                messagebox.showerror("Błąd", "Obie daty są wymagane do filtrowania.")
+                return
+
+            filtered_bookings = [
+                b for b in self.bookings
+                if start_date <= b["start_date"] <= end_date
+            ]
+
+            if not filtered_bookings:
+                messagebox.showinfo("Brak wyników", "Nie znaleziono żadnych rezerwacji w podanym zakresie dat.")
+                return
+
+            filtered_details = "\n\n".join([
+                f"Imię i nazwisko: {b['name']}\n"
+                f"E-mail: {b['email']}\n"
+                f"Numer telefonu: {b['phone']}\n"
+                f"Destynacja: {b['destination']}\n"
+                f"Daty podróży: {b['start_date']} do {b['end_date']}\n"
+                f"Uwagi specjalne: {b['special_requests']}"
+                for b in filtered_bookings
+            ])
+
+            messagebox.showinfo("Wyniki filtrowania", filtered_details)
+
+        tk.Button(filter_window, text="Zastosuj filtr", command=apply_filter).pack(pady=10)
 
     def clear_fields(self):
         self.name_entry.delete(0, tk.END)
